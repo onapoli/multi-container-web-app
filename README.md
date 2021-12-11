@@ -74,12 +74,14 @@ To delete local docker images individually:
 To delete more than one local image at a time:
 
 1. Run `docker image ls`
-2. Copy and paste all the *IMAGE ID* of the images to delete in this command `docker rmi IMAGE_ID IMAGE_ID IMAGE_ID` replacing each IMAGE_ID with each copied valued. Add as much *IMAGE ID* as needed.
+2. Copy and paste all the *IMAGE ID* of the images to delete in this command `docker rmi IMAGE_ID IMAGE_ID IMAGE_ID` replacing each IMAGE_ID with each copied value. Add as much IMAGE_ID as needed.
 
-To remove all local docker images from your system: ***Be careful with this command, it will remove every docker image in your system, including others not related to this project.***
+To remove all local docker images from your system:
 
 Run `docker rmi -f $(docker images -aq)`
 
+***Be careful with this command!!! It will remove every docker image in your system, including others not related to this project.***
+
 #### Uninstall
 
-To uninstall docker and/or docker-compose, look at the bottom of the installation page/s for your system.
+To uninstall **docker** and/or **docker-compose**, look at the bottom of the installation page/s for your system.

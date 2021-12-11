@@ -1,0 +1,165 @@
+version: "3.8"
+
+services:
+  db:
+    container_name: mariadb_cont
+    build:
+      context: ./requirements/mariadb/
+      args:
+        MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
+        MYSQL_ADMIN_USER: $MYSQL_ADMIN_USER
+        MYSQL_ADMIN_USER_PASSWORD: $MYSQL_ADMIN_USER_PASSWORD
+        MYSQL_USER: $MYSQL_USER
+        MYSQL_USER_PASSWORD: $MYSQL_USER_PASSWORD
+        MYSQL_DB_NAME: $MYSQL_DB_NAME
+    image: mariadb
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - my_net
+    restart: unless-stopped
+
+  wp:
+    container_name: wordpress_cont
+    depends_on:
+      - db
+      - redis
+    build:
+      context: ./requirements/wordpress/
+      args:
+        MYSQL_USER: $MYSQL_USER
+        MYSQL_USER_PASSWORD: $MYSQL_USER_PASSWORD
+        MYSQL_DB_NAME: $MYSQL_DB_NAME
+        MDB_HOST: $MDB_HOST
+        REDIS_HOST: $REDIS_HOST
+        REDIS_PORT: $REDIS_PORT
+    image: wordpress
+    volumes:
+      - website:/var/www/my_website
+    networks:
+      - my_net
+    restart: unless-stopped
+
+  nginx:
+    container_name: nginx_cont
+    depends_on:
+      - wp
+    build:
+      context: ./requirements/nginx/
+      args:
+        CERTS_: $CERTS_
+        DOMAIN_NAME: $DOMAIN_NAME
+        WP_HOST: $WP_HOST
+    image: nginx
+    volumes:
+      - website:/var/www/my_website
+    ports:
+      - 443:443
+    networks:
+      - my_net
+    restart: unless-stopped
+
+  admin:
+    container_name: adminer_cont
+    depends_on:
+      - db
+    build:
+      context: ./requirements/bonus/adminer/
+    image: adminer
+    networks:
+      - my_net
+    restart: unless-stopped
+  
+  ftp:
+    container_name: ftp_cont
+    depends_on:
+      - nginx
+    build:
+      context: ./requirements/bonus/ftp/
+      args:
+        FTP_USER: $FTP_USER
+        FTP_PASS: $FTP_PASS
+        CERTS_: $CERTS_
+        FTP_DOMAIN_NAME: $FTP_DOMAIN_NAME
+    image: ftp
+    volumes:
+      - website:/var/www/my_website
+    ports:
+      - "8021:21"
+    networks:
+      - my_net
+    restart: unless-stopped
+  
+  redis:
+    container_name: redis_cont
+    build:
+      context: ./requirements/bonus/redis/
+      args:
+        REDIS_HOST: $REDIS_HOST
+        REDIS_PORT: $REDIS_PORT
+    image: redis
+    networks:
+      - my_net
+    restart: unless-stopped
+  
+  static:
+    container_name: static_cont
+    build:
+      context: ./requirements/bonus/static/
+      args:
+        CERTS_: $CERTS_
+        STATIC_DOMAIN_NAME: $STATIC_DOMAIN_NAME
+        STATIC_PORT: $STATIC_PORT
+    image: static
+    environment:
+      - CERTS_=$CERTS_
+      - STATIC_DOMAIN_NAME=$STATIC_DOMAIN_NAME
+      - STATIC_PORT=$STATIC_PORT
+    ports:
+      - "8443:$STATIC_PORT"
+    networks:
+      - my_net
+    restart: unless-stopped
+  
+  registry:
+    container_name: registry_cont
+    build:
+      context: ./requirements/bonus/registry/
+      args:
+        CERTS_: $CERTS_
+        REGISTRY_DOMAIN_NAME: $REGISTRY_DOMAIN_NAME
+        REGISTRY_PORT: $REGISTRY_PORT
+    image: registry
+    volumes:
+      - registry_imgs:/var/lib/registry
+    networks:
+      my_net:
+        ipv4_address: 172.16.238.10
+    restart: unless-stopped
+
+volumes:
+  website:
+    driver: local
+    driver_opts:
+       o: bind
+       type: none
+       device: ~/data/website_vol
+  db_data:
+    driver: local
+    driver_opts:
+       o: bind
+       type: none
+       device: ~/data/db_vol
+  registry_imgs:
+    driver: local
+    driver_opts:
+       o: bind
+       type: none
+       device: ~/data/registry_vol
+
+networks:
+  my_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.238.0/24"
